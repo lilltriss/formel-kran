@@ -921,9 +921,13 @@
     </div>
 
     <!-- Incoming orders -->
-    <div class="sec-label" style="padding-top:4px;">INKOMMANDE</div>
-    <div class="incoming-cards">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 16px 6px;">
+      <div class="sec-label" style="padding:0;">INKOMMANDE</div>
+      <div id="sheets-status" style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);">● HÄMTAR…</div>
+    </div>
+    <div class="incoming-cards" id="incoming-cards-container">
 
+      <!-- Static fallback orders (visas tills Sheets laddas) -->
       <div class="order-card" onclick="openDetail(2)">
         <div class="card-top">
           <div class="card-id">#059</div>
@@ -1976,8 +1980,213 @@ function submitOrder() {
 }
 
 // ============================================================
-// MODAL SHEETS
+// GOOGLE SHEETS LIVE ORDERS
 // ============================================================
+const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdL5InOMvVgLsLxFy1VHSwc1SI6LFKjjYnHe-Pi_Yp4kBIVD4mmpNTBhsQKF0t-yVbIWLdPxeJ4uqO/pub?output=csv';
+
+let sheetsOrders = [];
+let lastRowCount = 0;
+let orderCounter = 61;
+
+const GOODS_ICONS = {
+  'grus': '🪨', 'schakt': '🪨', 'sand': '🪨',
+  'kran': '🏗️', 'lyft': '🏗️', 'prefab': '🧱', 'betong': '🧱', 'element': '🧱',
+  'grävmaskin': '🚜', 'grävare': '🚜', 'hjulgrävare': '🚜',
+  'container': '📦', 'stål': '⚙️', 'timber': '🪵', 'trä': '🪵',
+};
+
+function getIcon(gods) {
+  if (!gods) return '📦';
+  const lower = gods.toLowerCase();
+  for (const [key, icon] of Object.entries(GOODS_ICONS)) {
+    if (lower.includes(key)) return icon;
+  }
+  return '🚛';
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    // Handle quoted fields with commas
+    const cols = [];
+    let current = '';
+    let inQuote = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { cols.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+    cols.push(current.trim());
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (cols[idx] || '').replace(/"/g, '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function colVal(row, ...candidates) {
+  for (const c of candidates) {
+    const key = Object.keys(row).find(k => k.toLowerCase().includes(c.toLowerCase()));
+    if (key && row[key]) return row[key];
+  }
+  return '';
+}
+
+function renderSheetsOrders(rows) {
+  const container = document.getElementById('incoming-cards-container');
+  if (!container) return;
+
+  // Keep static demo cards, add live ones after
+  const staticCards = container.querySelectorAll('.order-card[data-static]');
+
+  // Remove old live cards
+  container.querySelectorAll('.order-card[data-live]').forEach(el => el.remove());
+
+  // Check for new orders
+  const isNew = rows.length > lastRowCount;
+  if (isNew && lastRowCount > 0) {
+    showToast('⚡ Ny order inkommande!');
+    // Update notif badge
+    const badge = document.querySelector('.notif-badge');
+    if (badge) badge.textContent = parseInt(badge.textContent || 0) + (rows.length - lastRowCount);
+  }
+  lastRowCount = rows.length;
+
+  rows.forEach((row, i) => {
+    const gods   = colVal(row, 'Godstyp');
+    const vikt   = colVal(row, 'Vikt');
+    const kolli  = colVal(row, 'Kolli', 'kolli');
+    const fran   = colVal(row, 'Hämtadress');
+    const till   = colVal(row, 'Leveransadress');
+    const datum  = colVal(row, 'Datum');
+    const tid    = colVal(row, 'Tid');
+    const kund   = colVal(row, 'Kund');
+    const tel    = colVal(row, 'Telefonnummer');
+    const instr  = colVal(row, 'Instruktioner');
+    const ts     = colVal(row, 'Tidstämpel');
+
+    const id = '#0' + (orderCounter + i);
+    const icon = getIcon(gods);
+    const sub = [vikt ? vikt + ' ton' : '', kolli ? kolli + ' kolli' : ''].filter(Boolean).join(' · ');
+    const metaDatum = datum || 'Idag';
+    const metaTid = tid || '';
+
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.setAttribute('data-live', '1');
+    card.style.animation = isNew && i >= lastRowCount - 1 ? 'slideIn 0.4s ease' : '';
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-id">${id}</div>
+        <div class="badge badge-new">⚡ NY</div>
+      </div>
+      <div class="card-type-row">
+        <div class="type-icon">${icon}</div>
+        <div>
+          <div class="type-name">${gods || 'Okänt gods'}</div>
+          <div class="type-sub">${sub || '–'}</div>
+        </div>
+      </div>
+      <div class="card-route">
+        <div class="route-row"><div class="route-dot dot-from"></div>${fran || '–'}</div>
+        <div class="route-connector"></div>
+        <div class="route-row"><div class="route-dot dot-to"></div>${till || '–'}</div>
+      </div>
+      <div class="card-meta">
+        <span>📅 ${metaDatum}${metaTid ? ' ' + metaTid : ''}</span>
+        ${kund ? '<span>🏢 ' + kund + '</span>' : ''}
+        ${tel ? '<span><a href="tel:' + tel.replace(/\s/g,'') + '" style="color:var(--orange);text-decoration:none;">📞 ' + tel + '</a></span>' : ''}
+      </div>
+      ${instr ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-style:italic;">"' + instr + '"</div>' : ''}
+    `;
+    card.onclick = () => openLiveDetail(row, id);
+    container.appendChild(card);
+  });
+
+  const status = document.getElementById('sheets-status');
+  if (status) {
+    if (rows.length > 0) {
+      status.style.color = 'var(--green)';
+      status.textContent = '● LIVE · ' + rows.length + ' från formulär';
+    } else {
+      status.style.color = 'var(--muted)';
+      status.textContent = '● Inga formulärordrar än';
+    }
+  }
+}
+
+function openLiveDetail(row, id) {
+  // Fill detail screen with live data
+  const gods  = colVal(row, 'Godstyp');
+  const vikt  = colVal(row, 'Vikt');
+  const fran  = colVal(row, 'Hämtadress');
+  const till  = colVal(row, 'Leveransadress');
+  const datum = colVal(row, 'Datum');
+  const tid   = colVal(row, 'Tid');
+  const kund  = colVal(row, 'Kund');
+  const kontakt = colVal(row, 'Kontakt');
+  const tel   = colVal(row, 'Telefonnummer');
+  const instr = colVal(row, 'Instruktioner');
+  const icon  = getIcon(gods);
+
+  // Update detail header
+  const detailTitle = document.querySelector('#screen-detail .header-title');
+  const detailSub   = document.querySelector('#screen-detail .header-sub');
+  if (detailTitle) detailTitle.textContent = 'Order ' + id;
+  if (detailSub)   detailSub.textContent = icon + ' ' + (gods || '–') + (vikt ? ' · ' + vikt + ' ton' : '') + (kund ? ' · ' + kund : '');
+
+  // Update hero
+  const heroId   = document.querySelector('.detail-order-id');
+  const heroType = document.querySelector('.detail-type');
+  if (heroId)   heroId.textContent = 'ORDER ' + id + (datum ? ' · ' + datum : '') + (tid ? ' ' + tid : '');
+  if (heroType) heroType.textContent = icon + ' ' + (gods || 'Okänt gods');
+
+  // Update address rows
+  const addrFrom = document.querySelector('#screen-detail a[href*="Industrivägen+4"]')?.closest('.info-value');
+  const addrTo   = document.querySelector('#screen-detail a[href*="Industrivägen+12"]')?.closest('.info-value');
+  if (addrFrom && fran) addrFrom.innerHTML = `<a href="https://maps.google.com/?q=${encodeURIComponent(fran)}" target="_blank" style="color:var(--orange);text-decoration:none;">📍 ${fran}</a>`;
+  if (addrTo && till)   addrTo.innerHTML   = `<a href="https://maps.google.com/?q=${encodeURIComponent(till)}" target="_blank" style="color:var(--orange);text-decoration:none;">📍 ${till}</a>`;
+
+  // Update phone
+  const telEl = document.querySelector('#screen-detail a[href^="tel:"]');
+  if (telEl && tel) { telEl.href = 'tel:' + tel.replace(/\s/g,''); telEl.textContent = '📞 ' + tel; }
+
+  // Update weight in hero badge
+  const weightBadge = document.querySelector('.detail-hero div[style*="var(--orange)"]');
+  if (weightBadge && vikt) weightBadge.textContent = vikt + ' ton';
+
+  // Update instructions
+  const descBox = document.querySelector('.desc-box');
+  if (descBox && instr) descBox.textContent = '"' + instr + '"';
+
+  showScreen('screen-detail');
+}
+
+async function fetchSheetsOrders() {
+  try {
+    const resp = await fetch(SHEETS_CSV_URL + '&t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const rows = parseCSV(text);
+    sheetsOrders = rows;
+    renderSheetsOrders(rows);
+  } catch(e) {
+    const status = document.getElementById('sheets-status');
+    if (status) { status.textContent = '● Offline'; status.style.color = 'var(--red)'; }
+    console.warn('Sheets fetch failed:', e);
+  }
+}
+
+// Mark static cards so we don't remove them
+document.querySelectorAll('#incoming-cards-container .order-card').forEach(el => el.setAttribute('data-static', '1'));
+
+// Fetch immediately then every 30s
+fetchSheetsOrders();
+setInterval(fetchSheetsOrders, 30000);
+</script>
 function openSheet(id) {
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
   const el = document.getElementById(id);
