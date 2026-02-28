@@ -1,0 +1,2427 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Formel Kran – Förarapp</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&family=Racing+Sans+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #FF5C00;
+    --orange-hot: #FF8C00;
+    --orange-glow: rgba(255,92,0,0.10);
+    --bg: #0D0E11;
+    --bg2: #13151A;
+    --bg3: #1A1D24;
+    --bg4: #20232B;
+    --border: rgba(255,255,255,0.07);
+    --text: #F0F0F0;
+    --muted: #6B7280;
+    --green: #22C55E;
+    --red: #EF4444;
+    --blue: #3B82F6;
+    --yellow: #F59E0B;
+    --purple: #A855F7;
+
+    /* Order accent colors for samlastning */
+    --c1: #FF5C00;
+    --c2: #3B82F6;
+    --c3: #A855F7;
+    --c4: #22C55E;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  .screen { display:none; flex-direction:column; min-height:100vh; animation: fadeIn 0.2s ease; }
+  .screen.active { display:flex; }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(6px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  /* STATUSBAR */
+  .statusbar {
+    height: 44px;
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .statusbar::after {
+    content:'';
+    position:absolute;
+    bottom:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, var(--orange) 50%, transparent);
+    opacity: 0.25;
+  }
+
+  .logo { color:var(--orange); font-family:'Racing Sans One', sans-serif; font-size:20px; letter-spacing:1px; text-shadow: 0 0 12px rgba(255,92,0,0.5); }
+
+  /* HEADER */
+  .header {
+    padding: 14px 20px 12px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+
+  .header-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .back-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 1px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* SCROLL AREA */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .scroll-area::-webkit-scrollbar { display:none; }
+
+  /* SECTION LABEL */
+  .sec-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 0 16px 6px;
+  }
+
+  /* ==============================
+     SAMLASTNING BANNER
+  ============================== */
+  .samlast-banner {
+    margin: 0 16px;
+    background: linear-gradient(135deg, rgba(255,92,0,0.12), rgba(255,140,0,0.06));
+    border: 1px solid rgba(255,92,0,0.25);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .samlast-icon { font-size: 24px; }
+
+  .samlast-info { flex: 1; }
+  .samlast-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: var(--orange);
+  }
+  .samlast-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .samlast-slots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .slot-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+  }
+  .slot-dot.used { border-color: transparent; }
+  .slot-dot.c1 { background: var(--c1); }
+  .slot-dot.c2 { background: var(--c2); }
+  .slot-dot.c3 { background: var(--c3); }
+  .slot-dot.c4 { background: var(--c4); }
+
+  /* ==============================
+     ACTIVE ORDERS MULTI-VIEW
+  ============================== */
+  .active-orders-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 16px;
+  }
+
+  .active-mini {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .active-mini:active { transform: scale(0.97); }
+
+  .active-mini.c1 { border-left-color: var(--c1); }
+  .active-mini.c2 { border-left-color: var(--c2); }
+  .active-mini.c3 { border-left-color: var(--c3); }
+  .active-mini.c4 { border-left-color: var(--c4); }
+
+  .active-mini.timer-running::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin: 6px;
+    animation: livePulse 1s infinite;
+  }
+
+  @keyframes livePulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(1.3); }
+  }
+
+  .mini-id {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 3px;
+  }
+
+  .mini-type { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+
+  .mini-timer {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .mini-status {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .mini-status.running { color: var(--green); }
+  .mini-status.paused { color: var(--yellow); }
+  .mini-status.done { color: var(--green); }
+  .mini-status.waiting-sig { color: var(--orange); }
+
+  .mini-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .mini-btn {
+    flex: 1;
+    padding: 5px 4px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .mini-btn:active { transform: scale(0.95); }
+
+  .mbtn-start { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+  .mbtn-pause { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+  .mbtn-sig { background: rgba(255,92,0,0.15); color: var(--orange); border: 1px solid rgba(255,92,0,0.2); }
+  .mbtn-view { background: var(--bg4); color: var(--muted); border: 1px solid var(--border); }
+
+  /* ADD ORDER SLOT */
+  .add-order-slot {
+    background: var(--bg3);
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-height: 120px;
+  }
+
+  .add-order-slot:active { transform: scale(0.97); }
+  .add-order-slot:hover { border-color: rgba(255,92,0,0.3); }
+  .add-slot-icon { font-size: 22px; color: var(--muted); }
+  .add-slot-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* INCOMING ORDERS */
+  .incoming-cards {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .order-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 4px solid var(--orange);
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity:0; transform:translateX(-12px); }
+    to { opacity:1; transform:translateX(0); }
+  }
+
+  .order-card:active { transform: scale(0.98); }
+
+  .card-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .card-id { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--orange); letter-spacing:1px; }
+
+  .badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 9px; font-weight:700; letter-spacing:1.5px;
+    padding: 3px 7px; border-radius: 4px; text-transform: uppercase;
+  }
+  .badge-new { background:rgba(255,92,0,0.15); color:var(--orange); border:1px solid rgba(255,92,0,0.2); animation: badgePulse 2s infinite; }
+  .badge-progress { background:rgba(59,130,246,0.15); color:var(--blue); border:1px solid rgba(59,130,246,0.2); }
+  .badge-done { background:rgba(34,197,94,0.15); color:var(--green); border:1px solid rgba(34,197,94,0.2); }
+
+  @keyframes badgePulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,92,0,0); }
+    50% { box-shadow: 0 0 0 3px rgba(255,92,0,0.1); }
+  }
+
+  .card-type-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .type-icon { font-size:20px; }
+  .type-name { font-size:14px; font-weight:600; }
+  .type-sub { font-size:11px; color:var(--muted); }
+
+  .card-route { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
+  .route-row { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text); }
+  .route-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot-from { background:var(--orange); }
+  .dot-to { background:var(--green); }
+  .route-connector { width:1px; height:10px; background:var(--border); margin-left:3px; }
+
+  .card-meta { display:flex; gap:10px; font-size:11px; color:var(--muted); padding-top:8px; border-top:1px solid var(--border); }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    display:flex; background:var(--bg2); border-top:1px solid var(--border);
+    padding:8px 0 20px; flex-shrink:0; position:sticky; bottom:0;
+  }
+  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px; cursor:pointer; position:relative; }
+  .nav-icon { font-size:20px; }
+  .nav-label { font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:700; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+  .nav-item.active .nav-label { color:var(--orange); }
+  .notif-badge { position:absolute; top:2px; right:10px; width:15px; height:15px; background:var(--orange); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:white; }
+
+  /* ==============================
+     ORDER DETAIL SCREEN
+  ============================== */
+  .detail-scroll { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .detail-scroll::-webkit-scrollbar { display:none; }
+
+  .detail-hero {
+    border-radius: 12px; padding: 18px;
+    border-left: 4px solid var(--orange);
+    background: var(--bg3); border: 1px solid var(--border);
+    border-left: 4px solid var(--orange);
+  }
+
+  .detail-order-id { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:3px; color:var(--muted); margin-bottom:3px; }
+  .detail-type { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text); margin-bottom:3px; }
+  .detail-customer { font-size:13px; color:var(--muted); }
+
+  .info-block { background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .info-block-title { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase; padding:10px 14px 8px; border-bottom:1px solid var(--border); }
+  .info-row { display:flex; justify-content:space-between; align-items:flex-start; padding:9px 14px; border-bottom:1px solid var(--border); gap:12px; font-size:13px; }
+  .info-row:last-child { border-bottom:none; }
+  .info-label { color:var(--muted); flex-shrink:0; font-size:12px; }
+  .info-value { font-weight:600; text-align:right; }
+  .info-value.highlight { color:var(--orange); }
+  .info-value.warn { color:var(--yellow); }
+
+  .desc-box {
+    padding: 14px; font-size:13px; color:var(--text); line-height:1.6;
+    border-left:2px solid var(--orange); background:var(--orange-glow);
+    border-radius:8px; font-style:italic;
+  }
+
+  .warn-block {
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius:12px; overflow:hidden;
+  }
+  .warn-block .info-block-title { color:var(--yellow); }
+
+  .img-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; }
+  .img-thumb { aspect-ratio:4/3; border-radius:8px; background:var(--bg2); display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--border); font-size:22px; gap:4px; cursor:pointer; transition:transform 0.15s; }
+  .img-thumb:active { transform:scale(0.97); }
+  .img-thumb span { font-size:10px; color:var(--muted); }
+
+  /* Samlastning slot selector */
+  .slot-selector {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .slot-selector-title {
+    font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700;
+    letter-spacing:2.5px; color:var(--muted); text-transform:uppercase;
+    padding:10px 14px 8px; border-bottom:1px solid var(--border);
+  }
+
+  .slot-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .slot-option {
+    background: var(--bg4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .slot-option:active { transform: scale(0.97); }
+  .slot-option.selected { border-color: currentColor; }
+
+  .slot-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+  /* ACTION BUTTONS */
+  .action-row { display:flex; gap:8px; padding:0 16px 8px; }
+
+  .btn-big {
+    flex:1; padding:15px; border-radius:12px; border:none;
+    font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:900;
+    letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+    transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .btn-big:active { transform:scale(0.97); }
+  .btn-accept { background:linear-gradient(135deg,var(--orange),var(--orange-hot)); color:white; box-shadow:0 4px 20px rgba(255,92,0,0.3); }
+  .btn-decline { background:var(--bg3); color:var(--muted); border:1px solid var(--border); }
+
+  /* ==============================
+     TIMER SCREEN (per order)
+  ============================== */
+  .timer-body {
+    flex:1; padding:16px; display:flex; flex-direction:column; gap:12px;
+  }
+
+  /* Order color strip */
+  .order-color-strip {
+    height: 4px;
+    border-radius: 2px;
+    margin-bottom: 4px;
+  }
+
+  .timer-display {
+    background:var(--bg3); border:1px solid var(--border); border-radius:16px;
+    padding:24px 20px; text-align:center; position:relative; overflow:hidden;
+  }
+
+  .timer-display::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at 50% 0%, rgba(255,92,0,0.07), transparent 60%);
+    pointer-events:none;
+  }
+
+  .timer-label {
+    font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700;
+    letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:10px;
+  }
+
+  .timer-time {
+    font-family:'Barlow Condensed',sans-serif; font-size:64px; font-weight:900;
+    letter-spacing:3px; line-height:1; color:var(--orange);
+    text-shadow: 0 0 30px rgba(255,92,0,0.35);
+  }
+
+  .timer-time.running { animation: timerPulse 1.2s ease-in-out infinite; }
+  @keyframes timerPulse { 0%,100%{opacity:1;} 50%{opacity:0.75;} }
+
+  .timer-sub { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .timer-controls { display:flex; align-items:center; justify-content:center; gap:16px; }
+
+  .ctrl-btn {
+    border-radius:50%; border:none; cursor:pointer; transition:all 0.15s;
+    display:flex; align-items:center; justify-content:center; font-size:22px;
+  }
+  .ctrl-btn:active { transform:scale(0.9); }
+
+  .ctrl-start { width:72px; height:72px; background:linear-gradient(135deg,var(--orange),var(--orange-hot)); box-shadow:0 0 25px rgba(255,92,0,0.4); }
+  .ctrl-stop { width:72px; height:72px; background:rgba(239,68,68,0.15); border:2px solid var(--red); }
+  .ctrl-small { width:44px; height:44px; background:var(--bg3); border:1px solid var(--border); font-size:16px; }
+  .ctrl-small.active-extra { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.3); }
+
+  .time-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  }
+
+  .time-cell {
+    padding:12px 14px; border-bottom:1px solid var(--border);
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .time-cell:nth-child(odd) { border-right:1px solid var(--border); }
+  .time-cell:last-child, .time-cell:nth-last-child(2) { border-bottom:none; }
+
+  .time-cell-label { font-size:11px; color:var(--muted); }
+  .time-cell-value {
+    font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700;
+    letter-spacing:1px; color:var(--text);
+  }
+  .time-cell-value.orange { color:var(--orange); }
+
+  /* Other active orders strip */
+  .other-orders-strip {
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;
+  }
+  .other-orders-strip::-webkit-scrollbar { display:none; }
+
+  .other-chip {
+    flex-shrink:0; background:var(--bg3); border:1px solid var(--border);
+    border-radius:8px; padding:6px 10px; cursor:pointer; transition:all 0.15s;
+    border-left:3px solid transparent;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .other-chip:active { transform:scale(0.97); }
+  .other-chip-id { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:1px; }
+  .other-chip-time { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:900; }
+  .other-chip-status { font-size:9px; color:var(--muted); }
+
+  .btn-finish {
+    width:100%; padding:16px; background:linear-gradient(135deg,var(--orange),var(--orange-hot));
+    color:white; border:none; border-radius:12px;
+    font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:900;
+    letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+    transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 4px 20px rgba(255,92,0,0.25);
+  }
+  .btn-finish:active { transform:scale(0.98); }
+  .btn-finish:disabled { opacity:0.4; pointer-events:none; }
+
+  /* ==============================
+     SIGNATURE SCREEN
+  ============================== */
+  .sig-scroll { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+  .sig-scroll::-webkit-scrollbar { display:none; }
+
+  .summary-card { background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .summary-title { padding:10px 14px; border-bottom:1px solid var(--border); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase; }
+  .sum-row { display:flex; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--border); font-size:13px; }
+  .sum-row:last-child { border-bottom:none; }
+  .sum-label { color:var(--muted); }
+  .sum-value { font-weight:600; }
+  .sum-total { color:var(--orange); font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:900; }
+
+  .sig-canvas-card { background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .sig-canvas-header { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase; }
+  .clear-sig { font-size:11px; color:var(--red); cursor:pointer; }
+  canvas#sigCanvas { width:100%; height:130px; display:block; background:rgba(255,255,255,0.02); cursor:crosshair; touch-action:none; }
+
+  .name-input-row { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:13px 14px; display:flex; align-items:center; gap:10px; }
+  .name-input-row input { flex:1; background:none; border:none; outline:none; color:var(--text); font-family:'Barlow',sans-serif; font-size:14px; }
+  .name-input-row input::placeholder { color:var(--muted); }
+
+  .btn-submit {
+    width:100%; padding:17px; background:linear-gradient(135deg,var(--green),#16a34a);
+    color:white; border:none; border-radius:12px;
+    font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900;
+    letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+    transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 4px 20px rgba(34,197,94,0.2);
+  }
+  .btn-submit:active { transform:scale(0.98); }
+
+  /* SUCCESS */
+  .success-body { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:32px; text-align:center; }
+  .success-icon { width:80px; height:80px; background:rgba(34,197,94,0.12); border:2px solid var(--green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:38px; animation:successPop 0.4s ease; }
+  @keyframes successPop { 0%{transform:scale(0);}70%{transform:scale(1.1);}100%{transform:scale(1);} }
+  .success-title { font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:900; color:var(--green); letter-spacing:2px; }
+  .success-sub { font-size:13px; color:var(--muted); line-height:1.7; }
+
+  /* Samlast overview */
+  .samlast-overview {
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  }
+  .samlast-ov-title { padding:10px 14px; border-bottom:1px solid var(--border); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase; }
+  .samlast-ov-row { display:flex; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); gap:10px; }
+  .samlast-ov-row:last-child { border-bottom:none; }
+  .ov-color { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .ov-id { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--muted); width:36px; }
+  .ov-desc { flex:1; font-size:12px; color:var(--text); }
+  .ov-time { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; color:var(--orange); }
+  .ov-status { font-size:11px; }
+
+  /* ==============================
+     FLYTTA ORDER / MALLAR / NY ORDER
+  ============================== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: flex-end;
+    backdrop-filter: blur(3px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-sheet {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--bg2);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border);
+    padding: 0 0 32px;
+    animation: sheetUp 0.25s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-sheet::-webkit-scrollbar { display: none; }
+
+  @keyframes sheetUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes aiFieldPop {
+    0% { background-color: rgba(255,92,0,0.18); }
+    100% { background-color: transparent; }
+  }
+
+  .ai-filled {
+    border-color: rgba(255,92,0,0.5) !important;
+    animation: aiFieldPop 1.5s ease forwards;
+  }
+
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 16px;
+  }
+
+  .sheet-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px; font-weight: 900;
+    letter-spacing: 1px;
+    padding: 0 20px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .sheet-section {
+    padding: 14px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sheet-sec-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 2.5px; color: var(--muted);
+    text-transform: uppercase;
+    padding: 10px 16px 4px;
+  }
+
+  .driver-option {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .driver-option:active { transform: scale(0.98); }
+  .driver-option:hover { border-color: rgba(255,92,0,0.3); }
+  .driver-option.selected { border-color: var(--orange); background: var(--orange-glow); }
+
+  .driver-avatar-sm {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--bg2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  .driver-opt-name { font-size: 14px; font-weight: 600; }
+  .driver-opt-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .driver-opt-status {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; padding: 3px 7px;
+    border-radius: 4px; margin-left: auto;
+  }
+
+  .template-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .template-card:active { transform: scale(0.98); }
+  .template-card:hover { border-color: rgba(255,92,0,0.3); }
+
+  .template-icon { font-size: 24px; flex-shrink: 0; }
+  .template-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .template-sub { font-size: 11px; color: var(--muted); }
+  .template-arrow { margin-left: auto; color: var(--muted); font-size: 18px; }
+
+  /* New order form */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .form-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .form-input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: rgba(255,92,0,0.5); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .form-select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .form-select option { background: #1A1D24; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .btn-sheet-submit {
+    margin: 16px 16px 0;
+    width: calc(100% - 32px);
+    padding: 15px;
+    background: linear-gradient(135deg, var(--orange), var(--orange-hot));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px; font-weight: 900;
+    letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(255,92,0,0.25);
+  }
+  .btn-sheet-submit:active { transform: scale(0.98); }
+
+  .btn-sheet-cancel {
+    margin: 8px 16px 0;
+    width: calc(100% - 32px);
+    padding: 13px;
+    background: var(--bg3);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ====================================
+     SCREEN: HOME
+==================================== -->
+<div class="screen active" id="screen-home">
+  <div class="statusbar">
+    <span id="clock-home">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="header-title" id="greeting">God morgon, Pontus 👋</div>
+        <div class="header-sub">Fre 28 feb · Bil 1 · Pontus Karlsson</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; color:var(--muted);">RANKING</div>
+        <div style="font-family:'Racing Sans One',sans-serif; font-size:22px; color:var(--orange); line-height:1;">🥇 #1</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- Samlastning banner -->
+    <div class="samlast-banner">
+      <div class="samlast-icon">🔗</div>
+      <div class="samlast-info">
+        <div class="samlast-title">SAMLASTNING AKTIV</div>
+        <div class="samlast-sub">2 av 4 platser använda · Utnyttja resterande!</div>
+      </div>
+      <div class="samlast-slots">
+        <div class="slot-dot used c1"></div>
+        <div class="slot-dot used c2"></div>
+        <div class="slot-dot"></div>
+        <div class="slot-dot"></div>
+      </div>
+    </div>
+
+    <!-- Active orders grid -->
+    <div class="sec-label" style="padding-top:4px;">AKTIVA UPPDRAG</div>
+    <div class="active-orders-grid">
+
+      <!-- Slot 1 - running -->
+      <div class="active-mini c1 timer-running" onclick="openTimer(0)">
+        <div class="mini-id" style="color:var(--c1)">#054</div>
+        <div class="mini-type">🧱 Prefabelement</div>
+        <div class="mini-timer" id="mini-timer-0" style="color:var(--c1)">01:24:05</div>
+        <div class="mini-status running">● KLOCKAN TICKAR</div>
+        <div class="mini-actions">
+          <button class="mini-btn mbtn-pause" onclick="event.stopPropagation(); quickPause(0)">⏸ Pausa</button>
+          <button class="mini-btn mbtn-sig" onclick="event.stopPropagation(); openSig(0)">✍ Sig</button>
+        </div>
+      </div>
+
+      <!-- Slot 2 - paused -->
+      <div class="active-mini c2" onclick="openTimer(1)">
+        <div class="mini-id" style="color:var(--c2)">#057</div>
+        <div class="mini-type">🏗️ Schaktmassor 14t</div>
+        <div class="mini-timer" id="mini-timer-1" style="color:var(--c2)">00:45:30</div>
+        <div class="mini-status paused">⏸ PAUSAD</div>
+        <div class="mini-actions">
+          <button class="mini-btn mbtn-start" onclick="event.stopPropagation(); quickStart(1)">▶ Start</button>
+          <button class="mini-btn mbtn-view" onclick="event.stopPropagation(); openTimer(1)">Detalj</button>
+        </div>
+      </div>
+
+      <!-- Slot 3 - empty -->
+      <div class="add-order-slot" onclick="showIncoming()">
+        <div class="add-slot-icon">＋</div>
+        <div class="add-slot-text">Lägg till order</div>
+      </div>
+
+      <!-- Slot 4 - empty -->
+      <div class="add-order-slot" onclick="showIncoming()">
+        <div class="add-slot-icon">＋</div>
+        <div class="add-slot-text">Lägg till order</div>
+      </div>
+
+    </div>
+
+    <!-- Incoming orders -->
+    <div class="sec-label" style="padding-top:4px;">INKOMMANDE</div>
+    <div class="incoming-cards">
+
+      <div class="order-card" onclick="openDetail(2)">
+        <div class="card-top">
+          <div class="card-id">#059</div>
+          <div class="badge badge-new">⚡ NY</div>
+        </div>
+        <div class="card-type-row">
+          <div class="type-icon">🧱</div>
+          <div>
+            <div class="type-name">Prefabelement</div>
+            <div class="type-sub">12 st · 4–6 ton/st · totalt ~60 ton</div>
+          </div>
+        </div>
+        <div class="card-route">
+          <div class="route-row"><div class="route-dot dot-from"></div>Foria AB, Täby</div>
+          <div class="route-connector"></div>
+          <div class="route-row"><div class="route-dot dot-to"></div>Industrivägen 12, Sollentuna</div>
+        </div>
+        <div class="card-meta">
+          <span>📅 Idag 11:00</span>
+          <span>⏱ ~3h</span>
+          <span>🖼 2 bilder</span>
+        </div>
+      </div>
+
+      <div class="order-card" onclick="openDetail(3)">
+        <div class="card-top">
+          <div class="card-id">#060</div>
+          <div class="badge badge-new">⚡ NY</div>
+        </div>
+        <div class="card-type-row">
+          <div class="type-icon">🏗️</div>
+          <div>
+            <div class="type-name">Grävmaskin</div>
+            <div class="type-sub">1 st · 28 ton · hjulgrävare</div>
+          </div>
+        </div>
+        <div class="card-route">
+          <div class="route-row"><div class="route-dot dot-from"></div>Arlanda logistik</div>
+          <div class="route-connector"></div>
+          <div class="route-row"><div class="route-dot dot-to"></div>Bålsta industripark</div>
+        </div>
+        <div class="card-meta">
+          <span>📅 Idag 13:00</span>
+          <span>⏱ ~2h</span>
+          <span>📎 Ritning</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FAB: Ny order -->
+  <div style="position:relative;height:0;overflow:visible;z-index:40;">
+    <button onclick="openSheet('sheet-new')" style="position:absolute;bottom:12px;right:16px;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--orange-hot));border:none;color:white;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 4px 24px rgba(255,92,0,0.5);display:flex;align-items:center;justify-content:center;transition:transform .15s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">＋</button>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-ordrar" onclick="showTab('home')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">Ordrar</div>
+      <div class="notif-badge">2</div>
+    </div>
+    <div class="nav-item" id="nav-karta" onclick="showTab('karta')">
+      <div class="nav-icon">🗺️</div>
+      <div class="nav-label">Karta</div>
+    </div>
+    <div class="nav-item" id="nav-stats" onclick="showTab('stats')">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Stats</div>
+    </div>
+    <div class="nav-item" id="nav-profil" onclick="showTab('profil')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Profil</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================
+     SCREEN: STATS
+==================================== -->
+<div class="screen" id="screen-stats">
+  <div class="statusbar">
+    <span id="clock-stats">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="header-title" id="greeting-stats">God morgon, Pontus 👋</div>
+        <div class="header-sub">Fre 28 feb · Vecka 9</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; color:var(--muted);">RANKING</div>
+        <div style="font-family:'Racing Sans One',sans-serif; font-size:22px; color:var(--orange); line-height:1;">🥇 #1</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- Fakturerbar tid -->
+    <div style="background:var(--bg3); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--border);">
+        <div style="padding:16px; border-right:1px solid var(--border);">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); margin-bottom:4px;">IDAG</div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:900; color:var(--orange); line-height:1;" id="today-hours">2h 09m</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">fakturerbar tid</div>
+          <div style="height:4px; background:var(--bg); border-radius:2px; margin-top:10px; overflow:hidden;">
+            <div id="today-bar" style="height:100%; width:27%; background:linear-gradient(90deg,var(--orange),var(--orange-hot)); border-radius:2px; transition:width 1s;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--muted); margin-top:4px;">Mål: 8h · <span style="color:var(--orange);" id="today-pct">27%</span></div>
+        </div>
+        <div style="padding:16px;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted); margin-bottom:4px;">VECKAN</div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:900; color:var(--text); line-height:1;" id="week-hours">18h 44m</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:3px;">fakturerbar tid</div>
+          <div style="height:4px; background:var(--bg); border-radius:2px; margin-top:10px; overflow:hidden;">
+            <div style="height:100%; width:47%; background:var(--blue); border-radius:2px;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--muted); margin-top:4px;">Mål: 40h · <span style="color:var(--blue);">47%</span></div>
+        </div>
+      </div>
+
+      <!-- Ordrar & samkörda -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr;">
+        <div style="padding:14px; border-right:1px solid var(--border); text-align:center;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text);">4</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">ordrar idag</div>
+        </div>
+        <div style="padding:14px; border-right:1px solid var(--border); text-align:center;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--purple);">17</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">ordrar veckan</div>
+        </div>
+        <div style="padding:14px; text-align:center;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--green);">6</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">samkörda</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Badges -->
+    <div style="background:var(--bg3); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid var(--border);">
+        <div style="font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted);">DINA BADGES</div>
+      </div>
+      <div style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+
+        <div style="background:rgba(245,158,11,0.10); border:1px solid rgba(245,158,11,0.25); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px;">
+          <span style="font-size:24px;">🔗</span>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--yellow);">SAMLASTNINGSPROFFS</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">6 samkörda ordrar denna vecka</div>
+          </div>
+          <div style="font-size:18px;">✅</div>
+        </div>
+
+        <div style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px;">
+          <span style="font-size:24px;">⏱</span>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--green);">ALLTID I TID</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">0 förseningar · 22 dagar i rad</div>
+          </div>
+          <div style="font-size:18px;">✅</div>
+        </div>
+
+        <div style="background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.2); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px;">
+          <span style="font-size:24px;">💪</span>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--purple);">TUNGVIKTARE</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">134 ton transporterat denna vecka</div>
+          </div>
+          <div style="font-size:18px;">✅</div>
+        </div>
+
+        <!-- Locked -->
+        <div style="background:var(--bg2); border:1px dashed var(--border); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; opacity:0.5;">
+          <span style="font-size:24px;">🔒</span>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--muted);">NOLL VÄNTETID</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">5 dagar utan väntetid · 3 av 5 klara</div>
+          </div>
+          <div style="width:36px; height:6px; background:var(--bg); border-radius:3px; overflow:hidden;">
+            <div style="width:60%; height:100%; background:var(--muted); border-radius:3px;"></div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2); border:1px dashed var(--border); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; opacity:0.5;">
+          <span style="font-size:24px;">🔒</span>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--muted);">VECKANS BÄSTA</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">Toppa ranking hela veckan · Du är #1 idag</div>
+          </div>
+          <div style="width:36px; height:6px; background:var(--bg); border-radius:3px; overflow:hidden;">
+            <div style="width:20%; height:100%; background:var(--muted); border-radius:3px;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div style="background:var(--bg3); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid var(--border);">
+        <div style="font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; color:var(--muted);">🏆 VECKORANKING · VECKA 9</div>
+      </div>
+      <div style="padding:8px 12px; display:flex; flex-direction:column; gap:4px;">
+
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:var(--orange-glow); border:1px solid rgba(255,92,0,0.2); border-radius:10px;">
+          <div style="font-family:'Racing Sans One',sans-serif; font-size:20px; color:var(--orange); width:26px; text-align:center;">1</div>
+          <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--orange),var(--orange-hot)); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">👷</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600;">Pontus Karlsson <span style="font-size:10px; color:var(--orange); font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">← DU</span></div>
+            <div style="font-size:11px; color:var(--muted);">17 ordrar · 6 samkörda</div>
+          </div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--orange);" id="lb-my-time">18h 44m</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:900; color:var(--muted); width:26px; text-align:center;">2</div>
+          <div style="width:34px; height:34px; border-radius:50%; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">👷</div>
+          <div style="flex:1;"><div style="font-size:13px; font-weight:600;">Conny Sandberg</div><div style="font-size:11px; color:var(--muted);">15 ordrar · 4 samkörda</div></div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--muted);">16h 20m</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:900; color:var(--muted); width:26px; text-align:center;">3</div>
+          <div style="width:34px; height:34px; border-radius:50%; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">👷</div>
+          <div style="flex:1;"><div style="font-size:13px; font-weight:600;">Jonas Ekman</div><div style="font-size:11px; color:var(--muted);">14 ordrar · 5 samkörda</div></div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--muted);">15h 55m</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:900; color:var(--muted); width:26px; text-align:center;">4</div>
+          <div style="width:34px; height:34px; border-radius:50%; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">👷</div>
+          <div style="flex:1;"><div style="font-size:13px; font-weight:600;">Robin Mählqvist</div><div style="font-size:11px; color:var(--muted);">12 ordrar · 3 samkörda</div></div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--muted);">14h 10m</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:900; color:var(--muted); width:26px; text-align:center;">5</div>
+          <div style="width:34px; height:34px; border-radius:50%; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">👷</div>
+          <div style="flex:1;"><div style="font-size:13px; font-weight:600;">Gabriel Köhler</div><div style="font-size:11px; color:var(--muted);">11 ordrar · 2 samkörda</div></div>
+          <div style="font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--muted);">13h 30m</div>
+        </div>
+
+      </div>
+    </div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" id="nav-ordrar-s" onclick="showTab('home')">
+      <div class="nav-icon">📋</div>
+      <div class="nav-label">Ordrar</div>
+    </div>
+    <div class="nav-item" onclick="showTab('karta')">
+      <div class="nav-icon">🗺️</div>
+      <div class="nav-label">Karta</div>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Stats</div>
+    </div>
+    <div class="nav-item" onclick="showTab('profil')">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">Profil</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================
+     SCREEN: ORDER DETAIL
+==================================== -->
+<div class="screen" id="screen-detail">
+  <div class="statusbar">
+    <span id="clock-detail">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <button class="back-btn" onclick="goHome()">← TILLBAKA</button>
+    <div class="header-title">Order #059</div>
+    <div class="header-sub">🧱 Prefabelement ~60t · Byggkund AB · Sollentuna</div>
+  </div>
+
+  <div class="detail-scroll">
+
+    <!-- CARGO HERO -->
+    <div class="detail-hero">
+      <div class="detail-order-id">ORDER #059 · IDAG 11:00</div>
+      <div class="detail-type">🧱 Prefabelement betong</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <div style="background:rgba(255,92,0,0.15); border:1px solid rgba(255,92,0,0.3); border-radius:6px; padding:5px 12px; font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:900; color:var(--orange);">~60 ton</div>
+        <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; color:var(--muted);">12 kolli</div>
+        <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; color:var(--muted);">~3h</div>
+      </div>
+    </div>
+
+    <!-- LAST & GODS -->
+    <div class="info-block" style="border-color:rgba(255,92,0,0.25);">
+      <div class="info-block-title" style="color:var(--orange);">⚖️ LAST & GODS</div>
+      <div class="info-row">
+        <div class="info-label">Godstyp</div>
+        <div class="info-value highlight">Prefabelement betong</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Antal kolli</div>
+        <div class="info-value">12 stycken</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Vikt/kolli</div>
+        <div class="info-value">4–6 ton/st</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Totalvikt</div>
+        <div class="info-value highlight">~60 ton</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Mått (L×B×H)</div>
+        <div class="info-value">6,0 × 1,2 × 0,4 m</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Hantering</div>
+        <div class="info-value warn">Lyft till 3:e våning (~9 m)</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Specialkrav</div>
+        <div class="info-value warn">Kontrollera underlagets bärighet</div>
+      </div>
+    </div>
+
+    <!-- HÄMTNING & LEVERANS -->
+    <div class="info-block">
+      <div class="info-block-title">📍 HÄMTNING & LEVERANS</div>
+      <div class="info-row">
+        <div class="info-label">Hämtas hos</div>
+        <div class="info-value">Foria AB</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Adress hämtning</div>
+        <div class="info-value"><a href="https://maps.google.com/?q=Industrivägen+4,+183+53+Täby" target="_blank" style="color:var(--orange);text-decoration:none;">📍 Industrivägen 4, 183 53 Täby</a></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Levereras till</div>
+        <div class="info-value">Byggkund AB</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Adress leverans</div>
+        <div class="info-value"><a href="https://maps.google.com/?q=Industrivägen+12,+192+68+Sollentuna" target="_blank" style="color:var(--orange);text-decoration:none;">📍 Industrivägen 12, 192 68 Sollentuna</a></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Starttid</div>
+        <div class="info-value highlight">11:00</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Beräknad tid</div>
+        <div class="info-value">~3 timmar</div>
+      </div>
+    </div>
+
+    <!-- KUND & KONTAKT -->
+    <div class="info-block">
+      <div class="info-block-title">👤 KUND & KONTAKT</div>
+      <div class="info-row">
+        <div class="info-label">Företag</div>
+        <div class="info-value">Byggkund AB</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Kontaktperson</div>
+        <div class="info-value">Maria Lindberg</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Telefon</div>
+        <div class="info-value"><a href="tel:0701234567" style="color:var(--orange);text-decoration:none;font-weight:700;">📞 070-123 45 67</a></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Fakturaadress</div>
+        <div class="info-value">Box 12, 192 00 Sollentuna</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Org.nr</div>
+        <div class="info-value">556123-4567</div>
+      </div>
+    </div>
+
+    <!-- KUNDENS INSTRUKTION -->
+    <div class="desc-box">
+      "Ca 12 prefabelement till 3:e våning. Ring mig 30 min innan ankomst. Ställ bilen på Industrivägen – gott om plats."
+    </div>
+
+    <!-- BILDER -->
+    <div class="info-block">
+      <div class="info-block-title">📷 BILDER FRÅN KUND</div>
+      <div class="img-grid">
+        <div class="img-thumb">🏗️<span>Arbetsplats</span></div>
+        <div class="img-thumb">📐<span>Ritning</span></div>
+      </div>
+    </div>
+
+    <!-- VARNING -->
+    <div class="warn-block">
+      <div class="info-block-title">⚠️ BEKRÄFTA MED KUND</div>
+      <div class="info-row"><div class="info-label">Ring Maria 30 min före – bekräfta exakt antal och bärighet på asfalten.</div></div>
+    </div>
+
+    <!-- Samlastning slot picker -->
+    <div class="slot-selector">
+      <div class="slot-selector-title">Samlasta med befintlig order</div>
+      <div class="slot-options">
+        <div class="slot-option" style="color:var(--c3)" onclick="selectSlot(this, 'c3')">
+          <div class="slot-color" style="background:var(--c3)"></div>
+          Slot 3 (ledig)
+        </div>
+        <div class="slot-option" style="color:var(--c4)" onclick="selectSlot(this, 'c4')">
+          <div class="slot-color" style="background:var(--c4)"></div>
+          Slot 4 (ledig)
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="action-row">
+    <button class="btn-big btn-decline" onclick="goHome()">✕ Avböj</button>
+    <button class="btn-big" style="background:var(--bg3);color:var(--muted);border:1px solid var(--border);flex:0.6;" onclick="openMoveOrder()">↔ Flytta</button>
+    <button class="btn-big btn-accept" onclick="acceptOrder()">✓ Acceptera</button>
+  </div>
+  <div style="height:14px;"></div>
+</div>
+
+<!-- ====================================
+     SCREEN: TIMER (per order)
+==================================== -->
+<div class="screen" id="screen-timer">
+  <div class="statusbar">
+    <span id="clock-timer">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <button class="back-btn" onclick="goHome()">← ALLA ORDRAR</button>
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div class="header-title" id="timer-order-id">#054 · Prefabelement</div>
+        <div class="header-sub" id="timer-customer">Byggkund AB · ~60 ton</div>
+      </div>
+      <div class="badge badge-progress" id="timer-badge">PÅGÅR</div>
+    </div>
+  </div>
+
+  <div class="timer-body">
+
+    <!-- Color strip -->
+    <div class="order-color-strip" id="timer-color-strip" style="background:var(--c1)"></div>
+
+    <!-- Timer display -->
+    <div class="timer-display">
+      <div class="timer-label">ARBETSTID · ORDER <span id="td-order-id">#054</span></div>
+      <div class="timer-time running" id="main-timer">01:24:05</div>
+      <div class="timer-sub" id="timer-sub-text">Klockan tickar · Startade 07:28</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="timer-controls">
+      <button class="ctrl-btn ctrl-small" id="wait-btn" onclick="toggleWait()" title="Väntetid">⏸</button>
+      <button class="ctrl-btn ctrl-start" id="main-ctrl-btn" onclick="toggleMainTimer()">⏸</button>
+      <button class="ctrl-btn ctrl-small" onclick="addNote()" title="Notering">💬</button>
+    </div>
+
+    <!-- Time grid -->
+    <div class="time-grid">
+      <div class="time-cell">
+        <div class="time-cell-label">Starttid</div>
+        <div class="time-cell-value orange" id="tc-start">07:28</div>
+      </div>
+      <div class="time-cell">
+        <div class="time-cell-label">Ordinarie</div>
+        <div class="time-cell-value" id="tc-ordinary">01:24</div>
+      </div>
+      <div class="time-cell">
+        <div class="time-cell-label">Väntetid</div>
+        <div class="time-cell-value" id="tc-wait">00:00</div>
+      </div>
+      <div class="time-cell">
+        <div class="time-cell-label">Km idag</div>
+        <div class="time-cell-value" id="tc-km" onclick="addKm()" style="cursor:pointer;">48 km ＋</div>
+      </div>
+    </div>
+
+    <!-- Other active orders -->
+    <div class="sec-label" style="padding:0;">ÖVRIGA AKTIVA ORDRAR</div>
+    <div class="other-orders-strip">
+      <div class="other-chip c2" style="border-left-color:var(--c2)" onclick="switchOrder(1)">
+        <div class="other-chip-id" style="color:var(--c2)">#057</div>
+        <div class="other-chip-time" id="chip-timer-1" style="color:var(--c2)">00:45:30</div>
+        <div class="other-chip-status">⏸ Pausad</div>
+      </div>
+    </div>
+
+    <button class="btn-finish" onclick="openSig(0)">
+      Slutför & signatur →
+    </button>
+
+  </div>
+</div>
+
+<!-- ====================================
+     SCREEN: SIGNATURE
+==================================== -->
+<div class="screen" id="screen-sig">
+  <div class="statusbar">
+    <span id="clock-sig">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('screen-timer')">← TIDRAPPORT</button>
+    <div class="header-title">Kundsignatur</div>
+    <div class="header-sub" id="sig-order-header">#054 · Byggkund AB</div>
+  </div>
+
+  <div class="sig-scroll">
+
+    <div class="summary-card">
+      <div class="summary-title">Sammanfattning</div>
+      <div class="sum-row"><div class="sum-label">Order</div><div class="sum-value" id="sum-order">#054 · Kranbil 35t</div></div>
+      <div class="sum-row"><div class="sum-label">Kund</div><div class="sum-value">Byggkund AB</div></div>
+      <div class="sum-row"><div class="sum-label">Datum</div><div class="sum-value">28 feb 2025</div></div>
+      <div class="sum-row"><div class="sum-label">Starttid</div><div class="sum-value" id="sum-start">07:28</div></div>
+      <div class="sum-row"><div class="sum-label">Sluttid</div><div class="sum-value" id="sum-end">–</div></div>
+      <div class="sum-row"><div class="sum-label">Arbetstid</div><div class="sum-value" id="sum-hours">–</div></div>
+      <div class="sum-row"><div class="sum-label">Väntetid</div><div class="sum-value" id="sum-wait">0 min</div></div>
+      <div class="sum-row"><div class="sum-label">Förare</div><div class="sum-value">Pontus Karlsson</div></div>
+      <div class="sum-row"><div class="sum-label">Belopp</div><div class="sum-value sum-total" id="sum-total">–</div></div>
+    </div>
+
+    <div class="sig-canvas-card">
+      <div class="sig-canvas-header">
+        KUNDENS SIGNATUR
+        <span class="clear-sig" onclick="clearSig()">Rensa</span>
+      </div>
+      <canvas id="sigCanvas" width="400" height="130"></canvas>
+    </div>
+
+    <div class="name-input-row">
+      <span>👤</span>
+      <input type="text" id="sig-name" placeholder="Kundens namn (namnförtydligande)">
+    </div>
+
+    <button class="btn-submit" onclick="submitOrder()">
+      ✅ Bekräfta & skicka till fakturering
+    </button>
+
+    <div style="height:10px;"></div>
+  </div>
+</div>
+
+<!-- ====================================
+     SCREEN: SUCCESS
+==================================== -->
+<div class="screen" id="screen-success">
+  <div class="statusbar">
+    <span>08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+
+  <div class="success-body">
+    <div class="success-icon">✅</div>
+    <div class="success-title">UPPDRAGET KLART!</div>
+    <div class="success-sub">
+      Order <span id="done-order">#054</span> slutförd.<br>
+      Fakturan skickas automatiskt via Fortnox.<br><br>
+      Du har fortfarande <strong id="still-active" style="color:var(--orange)">1 aktiv order</strong> igång.
+    </div>
+
+    <div class="samlast-overview">
+      <div class="samlast-ov-title">SAMLASTNING · KÖRPASS</div>
+      <div class="samlast-ov-row">
+        <div class="ov-color" style="background:var(--c1)"></div>
+        <div class="ov-id" style="color:var(--c1)">#054</div>
+        <div class="ov-desc">Kranbil 35t · Sollentuna</div>
+        <div class="ov-time" id="ov-time-0">1h 24m</div>
+        <div class="ov-status">✅</div>
+      </div>
+      <div class="samlast-ov-row">
+        <div class="ov-color" style="background:var(--c2)"></div>
+        <div class="ov-id" style="color:var(--c2)">#057</div>
+        <div class="ov-desc">Grävmaskin · Kista</div>
+        <div class="ov-time" id="ov-time-1">45m</div>
+        <div class="ov-status">⏸</div>
+      </div>
+    </div>
+
+    <button class="btn-submit" onclick="goHome()">← TILLBAKA TILL ORDRAR</button>
+  </div>
+</div>
+
+<!-- ====================================
+     SCREEN: KARTA
+==================================== -->
+<div class="screen" id="screen-karta">
+  <div class="statusbar">
+    <span id="clock-karta">08:52</span>
+    <span class="logo">FORMEL KRAN</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <div class="header-title">Karta</div>
+    <div class="header-sub">Nyköping · 8 fordon aktiva</div>
+  </div>
+
+  <div style="flex:1; position:relative; overflow:hidden; background:#1a2235;">
+    <svg viewBox="0 0 400 520" width="100%" height="100%" style="position:absolute;inset:0;" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="520" fill="#1a2235"/>
+      <path d="M280,0 Q320,40 340,100 Q360,160 350,220 Q340,280 360,340 Q380,400 400,440 L400,520 L280,520 Q260,480 270,420 Q280,360 260,300 Q240,240 250,180 Q260,120 280,60 Z" fill="#162030" opacity="0.8"/>
+      <path d="M60,0 Q70,60 75,120 Q80,180 85,240 Q90,300 95,360 Q100,420 105,480 L105,520" stroke="#2a3a50" stroke-width="8" fill="none"/>
+      <path d="M60,0 Q70,60 75,120 Q80,180 85,240 Q90,300 95,360 Q100,420 105,480 L105,520" stroke="#3a5070" stroke-width="5" fill="none" stroke-dasharray="20,8"/>
+      <path d="M30,160 Q80,140 140,150 Q200,160 240,140 Q280,120 300,80" stroke="#243040" stroke-width="6" fill="none"/>
+      <path d="M30,160 Q80,140 140,150 Q200,160 240,140 Q280,120 300,80" stroke="#344a60" stroke-width="3.5" fill="none"/>
+      <path d="M105,280 Q140,270 180,265 Q220,260 260,255" stroke="#243040" stroke-width="5" fill="none"/>
+      <path d="M105,280 Q140,270 180,265 Q220,260 260,255" stroke="#2e3e52" stroke-width="3" fill="none"/>
+      <path d="M190,200 Q210,230 220,260 Q230,290 225,320" stroke="#1e2e40" stroke-width="4" fill="none"/>
+      <path d="M105,200 L230,195" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M105,240 L250,235" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M105,320 L240,315" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M105,360 L230,355" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M150,160 L155,400" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M190,170 L195,380" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M230,180 L235,340" stroke="#1e2e40" stroke-width="3" fill="none"/>
+      <path d="M170,0 Q175,40 180,80 Q185,120 190,160 Q195,200 200,240 Q205,280 215,320 Q225,360 230,400 Q235,440 240,480 L245,520" stroke="#162840" stroke-width="12" fill="none" opacity="0.9"/>
+      <path d="M170,0 Q175,40 180,80 Q185,120 190,160 Q195,200 200,240 Q205,280 215,320 Q225,360 230,400 Q235,440 240,480 L245,520" stroke="#1a3050" stroke-width="7" fill="none"/>
+      <rect x="112" y="168" width="30" height="20" rx="2" fill="#1e2d3d"/>
+      <rect x="148" y="165" width="35" height="22" rx="2" fill="#1e2d3d"/>
+      <rect x="112" y="205" width="28" height="28" rx="2" fill="#1e2d3d"/>
+      <rect x="148" y="205" width="32" height="25" rx="2" fill="#1e2d3d"/>
+      <rect x="197" y="175" width="25" height="18" rx="2" fill="#1e2d3d"/>
+      <rect x="197" y="205" width="25" height="22" rx="2" fill="#1e2d3d"/>
+      <rect x="240" y="170" width="18" height="15" rx="2" fill="#1e2d3d"/>
+      <rect x="240" y="195" width="18" height="18" rx="2" fill="#1e2d3d"/>
+      <rect x="112" y="248" width="30" height="22" rx="2" fill="#1e2d3d"/>
+      <rect x="148" y="245" width="35" height="25" rx="2" fill="#1e2d3d"/>
+      <rect x="112" y="330" width="30" height="20" rx="2" fill="#1e2d3d"/>
+      <rect x="148" y="328" width="32" height="22" rx="2" fill="#1e2d3d"/>
+      <rect x="197" y="328" width="25" height="20" rx="2" fill="#1e2d3d"/>
+      <rect x="240" y="260" width="18" height="40" rx="2" fill="#1e2d3d"/>
+      <rect x="30" y="350" width="60" height="40" rx="3" fill="#1a2830"/>
+      <rect x="30" y="400" width="55" height="35" rx="3" fill="#1a2830"/>
+      <rect x="30" y="200" width="55" height="50" rx="3" fill="#1a2830"/>
+      <text x="140" y="290" font-family="'Barlow Condensed',sans-serif" font-size="9" fill="#3a5070" font-weight="600" letter-spacing="1">CENTRUM</text>
+      <text x="32" y="310" font-family="'Barlow Condensed',sans-serif" font-size="8" fill="#2a4060" font-weight="600">INDUSTRIOMRÅDE</text>
+      <text x="72" y="30" font-family="'Barlow Condensed',sans-serif" font-size="8" fill="#3a5070" font-weight="700" letter-spacing="1">E4</text>
+      <text x="185" y="100" font-family="'Barlow Condensed',sans-serif" font-size="8" fill="#2a4060" font-weight="600">NYKÖPINGSÅN</text>
+
+      <!-- Route line for Pontus -->
+      <path d="M95,280 Q120,260 155,250 Q180,245 210,248" stroke="#FF5C00" stroke-width="2.5" fill="none" stroke-dasharray="6,3" opacity="0.7"/>
+
+      <!-- Pontus - orange pulsing -->
+      <circle cx="95" cy="280" r="16" fill="rgba(255,92,0,0.12)" stroke="#FF5C00" stroke-width="1.5">
+        <animate attributeName="r" values="16;21;16" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="95" cy="280" r="9" fill="#FF5C00"/>
+      <text x="95" y="284" text-anchor="middle" font-size="10" fill="white" font-family="'Barlow Condensed',sans-serif" font-weight="900">🚛</text>
+      <rect x="68" y="257" width="54" height="14" rx="3" fill="rgba(13,14,17,0.9)" stroke="#FF5C00" stroke-width="1"/>
+      <text x="95" y="267" text-anchor="middle" font-size="8" fill="#FF5C00" font-family="'Barlow Condensed',sans-serif" font-weight="700">PONTUS #1</text>
+
+      <!-- Conny - blue -->
+      <circle cx="155" cy="195" r="9" fill="rgba(59,130,246,0.2)" stroke="#3B82F6" stroke-width="1.5"/>
+      <circle cx="155" cy="195" r="6" fill="#3B82F6"/>
+      <rect x="133" y="177" width="44" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#3B82F6" stroke-width="1"/>
+      <text x="155" y="187" text-anchor="middle" font-size="7.5" fill="#3B82F6" font-family="'Barlow Condensed',sans-serif" font-weight="700">CONNY #2</text>
+
+      <!-- Jonas - green -->
+      <circle cx="215" cy="315" r="9" fill="rgba(34,197,94,0.2)" stroke="#22C55E" stroke-width="1.5"/>
+      <circle cx="215" cy="315" r="6" fill="#22C55E"/>
+      <rect x="195" y="297" width="40" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#22C55E" stroke-width="1"/>
+      <text x="215" y="307" text-anchor="middle" font-size="7.5" fill="#22C55E" font-family="'Barlow Condensed',sans-serif" font-weight="700">JONAS #3</text>
+
+      <!-- Robin - muted idle -->
+      <circle cx="55" cy="230" r="9" fill="rgba(107,114,128,0.2)" stroke="#6B7280" stroke-width="1.5"/>
+      <circle cx="55" cy="230" r="6" fill="#6B7280"/>
+      <rect x="32" y="212" width="46" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#6B7280" stroke-width="1"/>
+      <text x="55" y="222" text-anchor="middle" font-size="7.5" fill="#9ca3af" font-family="'Barlow Condensed',sans-serif" font-weight="700">ROBIN #4</text>
+
+      <!-- Gabriel - purple loading -->
+      <circle cx="130" cy="365" r="9" fill="rgba(168,85,247,0.2)" stroke="#A855F7" stroke-width="1.5"/>
+      <circle cx="130" cy="365" r="6" fill="#A855F7"/>
+      <rect x="106" y="347" width="48" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#A855F7" stroke-width="1"/>
+      <text x="130" y="357" text-anchor="middle" font-size="7.5" fill="#A855F7" font-family="'Barlow Condensed',sans-serif" font-weight="700">GABRIEL #5</text>
+
+      <!-- Bil 6 -->
+      <circle cx="245" cy="220" r="9" fill="rgba(59,130,246,0.2)" stroke="#3B82F6" stroke-width="1.5"/>
+      <circle cx="245" cy="220" r="6" fill="#3B82F6"/>
+      <rect x="222" y="202" width="46" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#3B82F6" stroke-width="1"/>
+      <text x="245" y="212" text-anchor="middle" font-size="7.5" fill="#3B82F6" font-family="'Barlow Condensed',sans-serif" font-weight="700">BIL 6 #057</text>
+
+      <!-- Bil 7 -->
+      <circle cx="55" cy="390" r="9" fill="rgba(34,197,94,0.2)" stroke="#22C55E" stroke-width="1.5"/>
+      <circle cx="55" cy="390" r="6" fill="#22C55E"/>
+      <rect x="28" y="372" width="54" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#22C55E" stroke-width="1"/>
+      <text x="55" y="382" text-anchor="middle" font-size="7.5" fill="#22C55E" font-family="'Barlow Condensed',sans-serif" font-weight="700">BIL 7 KLAR</text>
+
+      <!-- Bil 8 -->
+      <circle cx="195" cy="155" r="9" fill="rgba(255,140,0,0.2)" stroke="#FF8C00" stroke-width="1.5"/>
+      <circle cx="195" cy="155" r="6" fill="#FF8C00"/>
+      <rect x="170" y="137" width="50" height="13" rx="3" fill="rgba(13,14,17,0.9)" stroke="#FF8C00" stroke-width="1"/>
+      <text x="195" y="147" text-anchor="middle" font-size="7.5" fill="#FF8C00" font-family="'Barlow Condensed',sans-serif" font-weight="700">BIL 8 #059</text>
+    </svg>
+
+    <!-- Legend -->
+    <div style="position:absolute; top:10px; right:10px; background:rgba(13,14,17,0.88); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; backdrop-filter:blur(4px);">
+      <div style="font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:700; letter-spacing:2px; color:#6B7280; margin-bottom:8px;">FÖRKLARNING</div>
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:600;"><div style="width:10px;height:10px;border-radius:50%;background:#FF5C00;"></div><span style="color:#F0F0F0;">Kör aktivt</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:600;"><div style="width:10px;height:10px;border-radius:50%;background:#3B82F6;"></div><span style="color:#F0F0F0;">På väg</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:600;"><div style="width:10px;height:10px;border-radius:50%;background:#22C55E;"></div><span style="color:#F0F0F0;">Levererar</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:600;"><div style="width:10px;height:10px;border-radius:50%;background:#A855F7;"></div><span style="color:#F0F0F0;">Lastar</span></div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:600;"><div style="width:10px;height:10px;border-radius:50%;background:#6B7280;"></div><span style="color:#F0F0F0;">Ledig</span></div>
+      </div>
+    </div>
+
+    <!-- Bottom strip -->
+    <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(13,14,17,0.92);border-top:1px solid rgba(255,255,255,0.07);padding:10px 16px;display:flex;gap:16px;align-items:center;backdrop-filter:blur(6px);">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#6B7280;">NYKÖPING</div>
+      <div style="display:flex;gap:12px;flex:1;">
+        <div style="font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#FF5C00;">● 3 aktiva</div>
+        <div style="font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#22C55E;">● 2 levererar</div>
+        <div style="font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#6B7280;">● 1 ledig</div>
+      </div>
+      <div style="font-size:11px;color:#6B7280;font-family:'Barlow Condensed',sans-serif;">Live</div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="showTab('home')"><div class="nav-icon">📋</div><div class="nav-label">Ordrar</div></div>
+    <div class="nav-item active"><div class="nav-icon">🗺️</div><div class="nav-label">Karta</div></div>
+    <div class="nav-item" onclick="showTab('stats')"><div class="nav-icon">📊</div><div class="nav-label">Stats</div></div>
+    <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const orders = [
+  { id:'#054', type:'Kranbil 35t', icon:'🏗️', customer:'Byggkund AB', contact:'Maria Lindberg', color:'c1', colorVar:'var(--c1)',
+    elapsed:5045, running:true, waitSec:0, waitRunning:false, km:48, startStr:'07:28', notes:[] },
+  { id:'#057', type:'Grävmaskin', icon:'🚜', customer:'Schakt AB', contact:'Johan Berg', color:'c2', colorVar:'var(--c2)',
+    elapsed:2730, running:false, waitSec:0, waitRunning:false, km:32, startStr:'08:07', notes:[] },
+];
+
+let currentOrderIdx = 0;
+let globalTick = null;
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+function showTab(tab) {
+  if (tab === 'home') {
+    showScreen('screen-home');
+  } else if (tab === 'stats') {
+    showScreen('screen-stats');
+    updateGamification();
+  } else if (tab === 'karta') {
+    showScreen('screen-karta');
+  }
+  // profil: placeholder
+}
+
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goHome() { showScreen('screen-home'); }
+function showIncoming() { showScreen('screen-detail'); }
+
+function openDetail(idx) { showScreen('screen-detail'); }
+
+function openTimer(idx) {
+  currentOrderIdx = idx;
+  const o = orders[idx];
+  document.getElementById('timer-order-id').textContent = o.id + ' · ' + o.type;
+  document.getElementById('timer-customer').textContent = o.customer + ' · ' + o.contact;
+  document.getElementById('timer-color-strip').style.background = o.colorVar;
+  document.getElementById('td-order-id').textContent = o.id;
+  document.getElementById('tc-start').textContent = o.startStr;
+  document.getElementById('tc-km').textContent = o.km + ' km ＋';
+  updateTimerDisplay();
+  updateCtrlBtn();
+
+  // Other orders chips
+  const strip = document.querySelector('.other-orders-strip');
+  strip.innerHTML = '';
+  orders.forEach((ord, i) => {
+    if (i === idx) return;
+    const chip = document.createElement('div');
+    chip.className = 'other-chip ' + ord.color;
+    chip.style.borderLeftColor = ord.colorVar;
+    chip.innerHTML = `
+      <div class="other-chip-id" style="color:${ord.colorVar}">${ord.id}</div>
+      <div class="other-chip-time" id="chip-timer-${i}" style="color:${ord.colorVar}">${fmt(ord.elapsed)}</div>
+      <div class="other-chip-status">${ord.running ? '● Live' : '⏸ Pausad'}</div>
+    `;
+    chip.onclick = () => openTimer(i);
+    strip.appendChild(chip);
+  });
+
+  showScreen('screen-timer');
+}
+
+function openSig(idx) {
+  currentOrderIdx = idx;
+  const o = orders[idx];
+  const now = new Date();
+  const endStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  document.getElementById('sig-order-header').textContent = o.id + ' · ' + o.customer;
+  document.getElementById('sum-order').textContent = o.id + ' · ' + o.type;
+  document.getElementById('sum-start').textContent = o.startStr;
+  document.getElementById('sum-end').textContent = endStr;
+  document.getElementById('sum-hours').textContent = fmt(o.elapsed);
+  document.getElementById('sum-wait').textContent = Math.floor(o.waitSec/60) + ' min';
+  const hrs = o.elapsed / 3600;
+  const total = Math.round(hrs * 1650 + (o.waitSec/60) * 45);
+  document.getElementById('sum-total').textContent = total.toLocaleString('sv-SE') + ' kr';
+  showScreen('screen-sig');
+}
+
+function acceptOrder() {
+  goHome();
+}
+
+function selectSlot(el, color) {
+  document.querySelectorAll('.slot-option').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ============================================================
+// TIMER LOGIC
+// ============================================================
+function fmt(s) {
+  const h = Math.floor(s/3600).toString().padStart(2,'0');
+  const m = Math.floor((s%3600)/60).toString().padStart(2,'0');
+  const sec = (s%60).toString().padStart(2,'0');
+  return `${h}:${m}:${sec}`;
+}
+
+function pad(n) { return n.toString().padStart(2,'0'); }
+
+function updateTimerDisplay() {
+  const o = orders[currentOrderIdx];
+  const el = document.getElementById('main-timer');
+  if (el) {
+    el.textContent = fmt(o.elapsed);
+    el.className = 'timer-time' + (o.running ? ' running' : '');
+  }
+  const ord = document.getElementById('tc-ordinary');
+  if (ord) ord.textContent = pad(Math.floor(o.elapsed/3600)) + ':' + pad(Math.floor((o.elapsed%3600)/60));
+  const wt = document.getElementById('tc-wait');
+  if (wt) wt.textContent = pad(Math.floor(o.waitSec/3600)) + ':' + pad(Math.floor((o.waitSec%3600)/60));
+}
+
+function updateCtrlBtn() {
+  const o = orders[currentOrderIdx];
+  const btn = document.getElementById('main-ctrl-btn');
+  if (!btn) return;
+  if (o.running) {
+    btn.className = 'ctrl-btn ctrl-stop';
+    btn.textContent = '⏸';
+  } else {
+    btn.className = 'ctrl-btn ctrl-start';
+    btn.textContent = '▶';
+  }
+}
+
+function toggleMainTimer() {
+  const o = orders[currentOrderIdx];
+  o.running = !o.running;
+  updateCtrlBtn();
+  updateTimerDisplay();
+  updateMiniCards();
+}
+
+function toggleWait() {
+  const o = orders[currentOrderIdx];
+  o.waitRunning = !o.waitRunning;
+  const btn = document.getElementById('wait-btn');
+  if (btn) btn.classList.toggle('active-extra', o.waitRunning);
+}
+
+function quickPause(idx) {
+  orders[idx].running = false;
+  updateMiniCards();
+}
+
+function quickStart(idx) {
+  orders[idx].running = true;
+  updateMiniCards();
+}
+
+function switchOrder(idx) { openTimer(idx); }
+
+function addKm() {
+  orders[currentOrderIdx].km += 10;
+  const el = document.getElementById('tc-km');
+  if (el) el.textContent = orders[currentOrderIdx].km + ' km ＋';
+}
+
+function addNote() {
+  orders[currentOrderIdx].notes.push('Notering ' + (orders[currentOrderIdx].notes.length+1));
+}
+
+// ============================================================
+// MINI CARDS UPDATE
+// ============================================================
+function updateMiniCards() {
+  orders.forEach((o, i) => {
+    const el = document.getElementById('mini-timer-' + i);
+    if (el) el.textContent = fmt(o.elapsed);
+  });
+}
+
+// ============================================================
+// GAMIFICATION STATE
+// ============================================================
+const gamification = {
+  weekBaseSeconds: 67440, // 18h 44m baseline before today
+  todayBaseSeconds: 0,    // starts at 0, grows with order timers
+};
+
+function getTodayBillable() {
+  // Sum all running/active order elapsed times as today's billable
+  return orders.reduce((sum, o) => sum + o.elapsed, 0);
+}
+
+function fmtHoursMin(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h + 'h ' + pad(m) + 'm';
+}
+
+function updateGamification() {
+  const todaySec = getTodayBillable();
+  const weekSec = gamification.weekBaseSeconds + todaySec;
+
+  const todayEl = document.getElementById('today-hours');
+  const weekEl = document.getElementById('week-hours');
+  const barEl = document.getElementById('today-bar');
+  const pctEl = document.getElementById('today-pct');
+  const lbEl = document.getElementById('lb-my-time');
+
+  if (todayEl) todayEl.textContent = fmtHoursMin(todaySec);
+  if (weekEl) weekEl.textContent = fmtHoursMin(weekSec);
+  if (lbEl) lbEl.textContent = fmtHoursMin(weekSec);
+
+  const pct = Math.min(100, Math.round((todaySec / (8 * 3600)) * 100));
+  if (barEl) barEl.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+}
+
+function updateGreeting() {
+  const h = new Date().getHours();
+  let msg;
+  if (h < 10) msg = 'God morgon, Pontus 👋';
+  else if (h < 13) msg = 'Förmiddagen rullar, Pontus 💪';
+  else if (h < 17) msg = 'Eftermiddagen, Pontus 🚛';
+  else msg = 'Sista spurt, Pontus 🏁';
+  const g1 = document.getElementById('greeting');
+  const g2 = document.getElementById('greeting-stats');
+  if (g1) g1.textContent = msg;
+  if (g2) g2.textContent = msg;
+}
+
+updateGreeting();
+setInterval(updateGreeting, 60000);
+
+// ============================================================
+// GLOBAL TICK
+// ============================================================
+function tick() {
+  orders.forEach(o => {
+    if (o.running) o.elapsed++;
+    if (o.waitRunning) o.waitSec++;
+  });
+  updateMiniCards();
+  updateTimerDisplay();
+  updateGamification();
+
+  // Update chip timers
+  orders.forEach((o,i) => {
+    const chip = document.getElementById('chip-timer-' + i);
+    if (chip) chip.textContent = fmt(o.elapsed);
+  });
+
+  // Update clock
+  const now = new Date();
+  const t = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  ['clock-home','clock-detail','clock-timer','clock-sig','clock-stats','clock-karta'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t;
+  });
+}
+
+setInterval(tick, 1000);
+
+// ============================================================
+// SIGNATURE CANVAS
+// ============================================================
+const canvas = document.getElementById('sigCanvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy };
+}
+
+canvas.addEventListener('mousedown', e => { drawing=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); });
+canvas.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.strokeStyle='#FF5C00';
+  const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke();
+});
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x,p.y); },{passive:false});
+canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(!drawing)return; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.strokeStyle='#FF5C00'; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); },{passive:false});
+canvas.addEventListener('touchend',()=>drawing=false);
+
+function clearSig() { ctx.clearRect(0,0,canvas.width,canvas.height); }
+
+// ============================================================
+// SUBMIT
+// ============================================================
+function submitOrder() {
+  const o = orders[currentOrderIdx];
+  document.getElementById('done-order').textContent = o.id;
+  document.getElementById('still-active').textContent = (orders.length-1) + ' aktiv order';
+  document.getElementById('ov-time-0').textContent = fmt(orders[0].elapsed);
+  document.getElementById('ov-time-1').textContent = fmt(orders[1].elapsed);
+  showScreen('screen-success');
+}
+
+// ============================================================
+// MODAL SHEETS
+// ============================================================
+function openSheet(id) {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('open');
+}
+
+function closeSheet(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+}
+
+function openMoveOrder() { openSheet('sheet-move'); }
+
+function moveOrderTo(driverName) {
+  closeSheet('sheet-move');
+  showToast('Order #059 flyttad till ' + driverName);
+  goHome();
+}
+
+function useTemplate(name) {
+  closeSheet('sheet-templates');
+  // pre-fill new order form with template
+  document.getElementById('no-gods').value = name;
+  openSheet('sheet-new');
+}
+
+function submitNewOrder() {
+  const gods = document.getElementById('no-gods').value || 'Ny order';
+  const from = document.getElementById('no-from').value || '–';
+  const to   = document.getElementById('no-to').value   || '–';
+  closeSheet('sheet-new');
+  showToast('Order skapad: ' + gods + ' · ' + from + ' → ' + to);
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:"Barlow Condensed",sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;padding:10px 18px;border-radius:10px;z-index:200;opacity:0;transition:opacity .3s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2800);
+}
+
+// ============================================================
+// AI IMAGE IMPORT
+// ============================================================
+async function handleImageImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('ai-preview-img').src = e.target.result;
+    document.getElementById('ai-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  // Show loading
+  document.getElementById('ai-import-zone').style.display = 'none';
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('ai-result-banner').style.display = 'none';
+
+  // Convert image to base64
+  const base64 = await fileToBase64(file);
+  const mediaType = file.type || 'image/jpeg';
+
+  try {
+    document.getElementById('ai-loading-status').textContent = 'Skickar till Claude AI…';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: base64 }
+            },
+            {
+              type: 'text',
+              text: `Du är en assistent för ett transportföretag. Analysera den här bilden (skärmdump av SMS, mejl eller WhatsApp) och extrahera orderinformation. Svara ENBART med ett JSON-objekt, inga andra ord, ingen markdown. Fälten är:
+{
+  "gods": "godstyp eller beskrivning, tom sträng om okänt",
+  "vikt": "vikt i ton som sträng, tom sträng om okänt",
+  "kolli": "antal kolli som sträng, tom sträng om okänt",
+  "fran": "hämtadress, tom sträng om okänd",
+  "till": "leveransadress, tom sträng om okänd",
+  "datum": "datum i YYYY-MM-DD format, tom sträng om okänt",
+  "tid": "starttid i HH:MM format, tom sträng om okänd",
+  "kund": "företagsnamn, tom sträng om okänt",
+  "kontakt": "kontaktpersonens namn, tom sträng om okänt",
+  "tel": "telefonnummer, tom sträng om okänt",
+  "instruktioner": "övriga instruktioner eller anteckningar, tom sträng om inga"
+}`
+            }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '{}';
+
+    document.getElementById('ai-loading-status').textContent = 'Tolkar svaret…';
+
+    let parsed;
+    try {
+      const clean = text.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      throw new Error('Kunde inte tolka AI-svaret');
+    }
+
+    // Fill in form fields
+    const filled = [];
+    const fieldMap = [
+      ['gods',   'no-gods',    'ai-tag-gods'],
+      ['vikt',   'no-vikt',    'ai-tag-vikt'],
+      ['kolli',  'no-kolli',   'ai-tag-kolli'],
+      ['fran',   'no-from',    'ai-tag-from'],
+      ['till',   'no-to',      'ai-tag-to'],
+      ['datum',  'no-datum',   'ai-tag-datum'],
+      ['tid',    'no-tid',     'ai-tag-tid'],
+      ['kund',   'no-kund',    'ai-tag-kund'],
+      ['kontakt','no-kontakt', 'ai-tag-kontakt'],
+      ['tel',    'no-tel',     'ai-tag-tel'],
+      ['instruktioner','no-instr','ai-tag-instr'],
+    ];
+
+    fieldMap.forEach(([key, inputId, tagId]) => {
+      const val = parsed[key];
+      if (val && val.trim()) {
+        const el = document.getElementById(inputId);
+        if (el) {
+          el.value = val.trim();
+          el.classList.add('ai-filled');
+          setTimeout(() => el.classList.remove('ai-filled'), 1600);
+        }
+        const tag = document.getElementById(tagId);
+        if (tag) tag.style.display = 'inline';
+        filled.push(key);
+      }
+    });
+
+    // Hide loading, show result
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-result-banner').style.display = 'flex';
+
+    const missingCount = fieldMap.length - filled.length;
+    const summary = filled.length + ' fält ifyllda automatiskt' +
+      (missingCount > 0 ? ' · ' + missingCount + ' behöver kompletteras' : ' · Allt hittat!');
+    document.getElementById('ai-result-summary').textContent = summary;
+
+  } catch(err) {
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('ai-import-zone').style.display = 'block';
+    showToast('⚠️ AI-analys misslyckades – fyll i manuellt');
+    console.error(err);
+  }
+
+  // Reset file input
+  event.target.value = '';
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target.result;
+      const base64 = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function clearAiImport() {
+  document.getElementById('ai-import-zone').style.display = 'block';
+  document.getElementById('ai-result-banner').style.display = 'none';
+  document.getElementById('ai-preview-wrap').style.display = 'none';
+  // Clear AI tags
+  document.querySelectorAll('[id^="ai-tag-"]').forEach(t => t.style.display = 'none');
+  // Clear form
+  ['no-gods','no-vikt','no-kolli','no-from','no-to','no-datum','no-tid','no-kund','no-kontakt','no-tel','no-instr'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = id === 'no-datum' ? '2026-02-28' : id === 'no-tid' ? '08:00' : '';
+  });
+}
+</script>
+
+<!-- ============================================================
+     MODAL: FLYTTA ORDER
+============================================================ -->
+<div class="modal-overlay" id="sheet-move" onclick="if(event.target===this)closeSheet('sheet-move')">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">↔ Flytta order #059</div>
+    <div class="sheet-sec-label">VÄLJ FÖRARE / RESURS</div>
+    <div class="sheet-section">
+
+      <div class="driver-option" onclick="moveOrderTo('Conny Sandberg')">
+        <div class="driver-avatar-sm">👷</div>
+        <div style="flex:1">
+          <div class="driver-opt-name">Conny Sandberg</div>
+          <div class="driver-opt-sub">Bil 2 · 1 aktiv order · 2 lediga slots</div>
+        </div>
+        <div class="driver-opt-status" style="background:rgba(34,197,94,0.12);color:var(--green);">LEDIG</div>
+      </div>
+
+      <div class="driver-option" onclick="moveOrderTo('Jonas Ekman')">
+        <div class="driver-avatar-sm">👷</div>
+        <div style="flex:1">
+          <div class="driver-opt-name">Jonas Ekman</div>
+          <div class="driver-opt-sub">Bil 3 · Levererar nu · 3 lediga slots</div>
+        </div>
+        <div class="driver-opt-status" style="background:rgba(59,130,246,0.12);color:var(--blue);">PÅ VÄG</div>
+      </div>
+
+      <div class="driver-option" onclick="moveOrderTo('Robin Mählqvist')">
+        <div class="driver-avatar-sm">👷</div>
+        <div style="flex:1">
+          <div class="driver-opt-name">Robin Mählqvist</div>
+          <div class="driver-opt-sub">Bil 4 · Ledig · 4 lediga slots</div>
+        </div>
+        <div class="driver-opt-status" style="background:rgba(107,114,128,0.12);color:var(--muted);">LEDIG</div>
+      </div>
+
+      <div class="driver-option" onclick="moveOrderTo('Gabriel Köhler')">
+        <div class="driver-avatar-sm">👷</div>
+        <div style="flex:1">
+          <div class="driver-opt-name">Gabriel Köhler</div>
+          <div class="driver-opt-sub">Bil 5 · Lastar · 2 lediga slots</div>
+        </div>
+        <div class="driver-opt-status" style="background:rgba(168,85,247,0.12);color:var(--purple);">LASTAR</div>
+      </div>
+
+    </div>
+    <button class="btn-sheet-cancel" onclick="closeSheet('sheet-move')">Avbryt</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: ORDERMALLAR
+============================================================ -->
+<div class="modal-overlay" id="sheet-templates" onclick="if(event.target===this)closeSheet('sheet-templates')">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📋 Ordermallar</div>
+    <div class="sheet-sec-label">VANLIGA UPPDRAG</div>
+    <div class="sheet-section">
+
+      <div class="template-card" onclick="useTemplate('Kranbil 35t – Lyft')">
+        <div class="template-icon">🏗️</div>
+        <div style="flex:1">
+          <div class="template-name">Kranbil 35t – Lyft</div>
+          <div class="template-sub">Standardlyft · Foria depå → kund</div>
+        </div>
+        <div class="template-arrow">›</div>
+      </div>
+
+      <div class="template-card" onclick="useTemplate('Grustransport 14t')">
+        <div class="template-icon">🪨</div>
+        <div style="flex:1">
+          <div class="template-name">Grustransport 14t</div>
+          <div class="template-sub">Schaktmassor / grus · Anläggning</div>
+        </div>
+        <div class="template-arrow">›</div>
+      </div>
+
+      <div class="template-card" onclick="useTemplate('Grävmaskin – Förflyttning')">
+        <div class="template-icon">🚜</div>
+        <div style="flex:1">
+          <div class="template-name">Grävmaskin – Förflyttning</div>
+          <div class="template-sub">Hjulgrävare / bandgrävare</div>
+        </div>
+        <div class="template-arrow">›</div>
+      </div>
+
+      <div class="template-card" onclick="useTemplate('Prefabelement betong')">
+        <div class="template-icon">🧱</div>
+        <div style="flex:1">
+          <div class="template-name">Prefabelement betong</div>
+          <div class="template-sub">Elementleverans · Lyft till våning</div>
+        </div>
+        <div class="template-arrow">›</div>
+      </div>
+
+      <div class="template-card" onclick="useTemplate('Containertransport')">
+        <div class="template-icon">📦</div>
+        <div style="flex:1">
+          <div class="template-name">Containertransport</div>
+          <div class="template-sub">20–40 fot · Hamn / terminal</div>
+        </div>
+        <div class="template-arrow">›</div>
+      </div>
+
+    </div>
+    <button class="btn-sheet-cancel" onclick="closeSheet('sheet-templates')">Avbryt</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: NY ORDER
+============================================================ -->
+<div class="modal-overlay" id="sheet-new" onclick="if(event.target===this)closeSheet('sheet-new')">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">＋ Ny order</div>
+
+    <div class="sheet-section">
+
+      <!-- AI IMAGE IMPORT -->
+      <div id="ai-import-zone" style="background:linear-gradient(135deg,rgba(255,92,0,0.08),rgba(255,140,0,0.04));border:1.5px dashed rgba(255,92,0,0.4);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;" onclick="document.getElementById('ai-file-input').click()">
+        <input type="file" id="ai-file-input" accept="image/*" style="display:none" onchange="handleImageImport(event)">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,92,0,0.12);border:1px solid rgba(255,92,0,0.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📷</div>
+          <div style="flex:1;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;letter-spacing:1px;color:var(--orange);">IMPORTERA FRÅN BILD</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Skärmdump av SMS, mejl eller WhatsApp – AI fyller i formuläret automatiskt</div>
+          </div>
+          <div style="color:var(--orange);font-size:20px;">›</div>
+        </div>
+      </div>
+
+      <!-- AI LOADING STATE (hidden by default) -->
+      <div id="ai-loading" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;animation:spin 1s linear infinite;display:inline-block;">⏳</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;color:var(--orange);margin-top:8px;">AI ANALYSERAR BILDEN…</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="ai-loading-status">Läser text och extraherar orderdetaljer</div>
+      </div>
+
+      <!-- AI RESULT BANNER (hidden by default) -->
+      <div id="ai-result-banner" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">✅</span>
+        <div style="flex:1;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--green);">AI HITTADE ORDERINFO</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="ai-result-summary">Granska och komplettera fälten nedan</div>
+        </div>
+        <button onclick="clearAiImport()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px;">✕</button>
+      </div>
+
+      <!-- IMAGE PREVIEW (hidden by default) -->
+      <div id="ai-preview-wrap" style="display:none;">
+        <img id="ai-preview-img" style="width:100%;border-radius:10px;border:1px solid var(--border);max-height:160px;object-fit:cover;" />
+      </div>
+
+      <!-- DIVIDER -->
+      <div style="display:flex;align-items:center;gap:10px;color:var(--muted);">
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;">ORDERDETALJER</span>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>
+
+      <!-- FORM FIELDS – all with IDs for AI to fill -->
+      <div class="form-group">
+        <div class="form-label">Godstyp / Beskrivning <span id="ai-tag-gods" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-gods" class="form-input" placeholder="t.ex. Prefabelement, Grävmaskin…">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Vikt (ton) <span id="ai-tag-vikt" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+          <input id="no-vikt" class="form-input" placeholder="t.ex. 14">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Antal kolli <span id="ai-tag-kolli" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+          <input id="no-kolli" class="form-input" placeholder="t.ex. 6">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Hämtadress <span id="ai-tag-from" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-from" class="form-input" placeholder="Gatuadress, postnummer">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Leveransadress <span id="ai-tag-to" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-to" class="form-input" placeholder="Gatuadress, postnummer">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Datum <span id="ai-tag-datum" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+          <input id="no-datum" class="form-input" type="date" value="2026-02-28">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Starttid <span id="ai-tag-tid" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+          <input id="no-tid" class="form-input" type="time" value="08:00">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Kund / Företag <span id="ai-tag-kund" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-kund" class="form-input" placeholder="Företagsnamn">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Kontaktperson <span id="ai-tag-kontakt" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-kontakt" class="form-input" placeholder="Namn">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Telefon <span id="ai-tag-tel" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <input id="no-tel" class="form-input" placeholder="07X-XXX XX XX">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Tilldela förare</div>
+        <select id="no-forare" class="form-select">
+          <option value="">Tilldela till mig (Pontus Karlsson)</option>
+          <option>Conny Sandberg · Bil 2</option>
+          <option>Jonas Ekman · Bil 3</option>
+          <option>Robin Mählqvist · Bil 4</option>
+          <option>Gabriel Köhler · Bil 5</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Instruktioner <span id="ai-tag-instr" style="display:none;background:rgba(255,92,0,0.15);color:var(--orange);font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:1px;">AI</span></div>
+        <textarea id="no-instr" class="form-input" rows="3" placeholder="Särskilda instruktioner…" style="resize:none;line-height:1.5;"></textarea>
+      </div>
+
+      <!-- Från mall -->
+      <button onclick="closeSheet('sheet-new');openSheet('sheet-templates')" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;">
+        <span>📋</span> ELLER VÄLJ FRÅN MALL
+      </button>
+
+    </div>
+
+    <button class="btn-sheet-submit" onclick="submitNewOrder()">✓ SKAPA ORDER</button>
+    <button class="btn-sheet-cancel" onclick="closeSheet('sheet-new')">Avbryt</button>
+    <div style="height:8px;"></div>
+  </div>
+</div>
+
+</body>
+</html>
